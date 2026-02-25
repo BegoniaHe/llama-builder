@@ -1,0 +1,62 @@
+FROM rocm/dev-ubuntu-24.04:7.2-complete
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git cmake build-essential clang \
+    ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+ARG LLAMA_CPP_REPO=https://github.com/ggml-org/llama.cpp.git
+ARG LLAMA_CPP_REF=master
+RUN git clone ${LLAMA_CPP_REPO} --depth 1 --branch ${LLAMA_CPP_REF} /workspace/llama.cpp
+WORKDIR /workspace/llama.cpp
+
+RUN cmake -S . -B build \
+      -DGGML_HIP=ON \
+      -DAMDGPU_TARGETS=gfx1151 \
+      -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS=-no-pie \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DLLAMA_BUILD_SERVER=OFF \
+ && cmake --build build --config Release -j"$(nproc)"
+
+RUN cat >/usr/local/bin/export-llama-gfx1151 <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+EXPORT_DIR="${1:-${LLAMA_EXPORT_DIR:-/export}}"
+
+mkdir -p "${EXPORT_DIR}" "${EXPORT_DIR}/bin" "${EXPORT_DIR}/lib"
+
+cp -af /workspace/llama.cpp/build/bin/. "${EXPORT_DIR}/bin/"
+
+if [[ -f /workspace/llama.cpp/build/bin/llama-completion ]]; then
+    cp -f /workspace/llama.cpp/build/bin/llama-completion "${EXPORT_DIR}/bin/llama-cli"
+fi
+
+cp -f /workspace/llama.cpp/build/ggml/src/ggml-hip/libggml-hip.a "${EXPORT_DIR}/"
+cp -f /workspace/llama.cpp/build/src/libllama.a "${EXPORT_DIR}/"
+
+cp -af /opt/rocm-7.2.0/lib/*.so* "${EXPORT_DIR}/lib/"
+cp -af /opt/rocm-7.2.0/lib/rocblas "${EXPORT_DIR}/lib/"
+
+echo "Export completed to: ${EXPORT_DIR}"
+ls -lh "${EXPORT_DIR}" | sed -n '1,120p'
+echo "---"
+ls -lh "${EXPORT_DIR}/bin" | sed -n '1,200p'
+EOF
+
+RUN chmod +x /usr/local/bin/export-llama-gfx1151
+
+ENV HSA_OVERRIDE_GFX_VERSION=11.0.0 \
+    ROCBLAS_USE_HIPBLASLT=1 \
+    ROCM_PATH=/opt/rocm \
+    HIP_PATH=/opt/rocm/hip
+
+ENTRYPOINT ["/usr/local/bin/export-llama-gfx1151"]
+CMD ["/export"]

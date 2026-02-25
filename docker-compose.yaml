@@ -1,0 +1,24 @@
+services:
+  llama-gfx1151:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        LLAMA_CPP_REF: ${LLAMA_CPP_REF:-master}
+    image: llama-gfx1151:latest
+
+    # 宿主机导出目录（默认导出到项目下 ./target）
+    volumes:
+      - type: bind
+        source: ${LLAMA_EXPORT_DIR:-./target}
+        target: /export
+        bind:
+          create_host_path: true
+
+    environment:
+      LLAMA_EXPORT_DIR: /export
+
+    # 一次性导出：拉取/构建在 image build 阶段完成，容器启动时只负责导出
+    command: ["/export"]
+
+    restart: "no"

@@ -1,0 +1,4 @@
+# gguf models
+*.gguf
+
+target/
