@@ -2,6 +2,9 @@ FROM rocm/dev-ubuntu-24.04:7.2-complete
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ENV ROCM_PATH=/opt/rocm \
+    HIP_PATH=/opt/rocm
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git cmake build-essential clang \
     ca-certificates curl \
@@ -17,12 +20,17 @@ WORKDIR /workspace/llama.cpp
 RUN cmake -S . -B build \
       -DGGML_HIP=ON \
       -DAMDGPU_TARGETS=gfx1151 \
+        -DCMAKE_HIP_COMPILER_ROCM_ROOT=/opt/rocm \
+        -DCMAKE_HIP_FLAGS="--rocm-path=/opt/rocm" \
       -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
-            -DCMAKE_EXE_LINKER_FLAGS=-no-pie \
+    -DCMAKE_EXE_LINKER_FLAGS="-no-pie -Wl,--gc-sections -flto" \
             -DLLAMA_BUILD_TESTS=OFF \
             -DLLAMA_BUILD_EXAMPLES=OFF \
-            -DLLAMA_BUILD_SERVER=OFF \
+            -DLLAMA_BUILD_SERVER=ON \
+    -DCMAKE_C_FLAGS="-O3 -ffunction-sections -fdata-sections -flto" \
+    -DCMAKE_CXX_FLAGS="-O3 -ffunction-sections -fdata-sections -flto" \
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--gc-sections" \
  && cmake --build build --config Release -j"$(nproc)"
 
 RUN cat >/usr/local/bin/export-llama-gfx1151 <<'EOF'
@@ -42,8 +50,36 @@ fi
 cp -f /workspace/llama.cpp/build/ggml/src/ggml-hip/libggml-hip.a "${EXPORT_DIR}/"
 cp -f /workspace/llama.cpp/build/src/libllama.a "${EXPORT_DIR}/"
 
-cp -af /opt/rocm-7.2.0/lib/*.so* "${EXPORT_DIR}/lib/"
-cp -af /opt/rocm-7.2.0/lib/rocblas "${EXPORT_DIR}/lib/"
+git -C /workspace/llama.cpp rev-parse HEAD > "${EXPORT_DIR}/llama-git-rev.txt"
+
+copy_rocm_lib_from_ldd() {
+    local binary="$1"
+    ldd "${binary}" 2>/dev/null | awk '
+        /=> \/opt\/rocm/ { print $3 }
+        /^\/opt\/rocm/    { print $1 }
+    ' | sort -u | while read -r lib; do
+        [[ -z "${lib}" ]] && continue
+        local real
+        real="$(readlink -f "${lib}" || true)"
+        [[ -z "${real}" || ! -f "${real}" ]] && continue
+
+        cp -f "${real}" "${EXPORT_DIR}/lib/"
+
+        local lib_base real_base
+        lib_base="$(basename "${lib}")"
+        real_base="$(basename "${real}")"
+        if [[ "${lib_base}" != "${real_base}" ]]; then
+            ln -sf "${real_base}" "${EXPORT_DIR}/lib/${lib_base}"
+        fi
+    done
+}
+
+for binary in /workspace/llama.cpp/build/bin/*; do
+    [[ -x "${binary}" && -f "${binary}" ]] || continue
+    copy_rocm_lib_from_ldd "${binary}"
+done
+
+cp -af /opt/rocm/lib/rocblas "${EXPORT_DIR}/lib/"
 
 echo "Export completed to: ${EXPORT_DIR}"
 ls -lh "${EXPORT_DIR}" | sed -n '1,120p'
@@ -54,9 +90,7 @@ EOF
 RUN chmod +x /usr/local/bin/export-llama-gfx1151
 
 ENV HSA_OVERRIDE_GFX_VERSION=11.0.0 \
-    ROCBLAS_USE_HIPBLASLT=1 \
-    ROCM_PATH=/opt/rocm \
-    HIP_PATH=/opt/rocm/hip
+    ROCBLAS_USE_HIPBLASLT=1
 
 ENTRYPOINT ["/usr/local/bin/export-llama-gfx1151"]
 CMD ["/export"]
