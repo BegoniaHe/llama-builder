@@ -9,11 +9,7 @@ services:
 
     # 宿主机导出目录（默认导出到项目下 ./target）
     volumes:
-      - type: bind
-        source: ${LLAMA_EXPORT_DIR:-./target}
-        target: /export
-        bind:
-          create_host_path: true
+      - ${LLAMA_EXPORT_DIR:-./target}:/export:Z
 
     environment:
       LLAMA_EXPORT_DIR: /export
