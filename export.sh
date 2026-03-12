@@ -13,3 +13,10 @@ podman run --rm -v "${EXPORT_DIR}:/export:Z" "${IMAGE_NAME}" /export
 
 echo "[export] done"
 ls -lh "${EXPORT_DIR}" | sed -n '1,120p'
+
+# Display version info if available
+if [[ -f "${EXPORT_DIR}/llama-git-rev.txt" ]]; then
+    echo ""
+    echo "[export] Exported version:"
+    head -n 1 "${EXPORT_DIR}/llama-git-rev.txt" | xargs -I {} echo "  {}"
+fi

@@ -50,6 +50,8 @@ fi
 cp -f /workspace/llama.cpp/build/ggml/src/ggml-hip/libggml-hip.a "${EXPORT_DIR}/"
 cp -f /workspace/llama.cpp/build/src/libllama.a "${EXPORT_DIR}/"
 
+# Store current git revision
+CURRENT_GIT_REV="$(git -C /workspace/llama.cpp rev-parse HEAD)"
 git -C /workspace/llama.cpp rev-parse HEAD > "${EXPORT_DIR}/llama-git-rev.txt"
 
 copy_rocm_lib_from_ldd() {
@@ -80,6 +82,26 @@ for binary in /workspace/llama.cpp/build/bin/*; do
 done
 
 cp -af /opt/rocm/lib/rocblas "${EXPORT_DIR}/lib/"
+
+# Check if current build is the latest version from upstream
+echo ""
+echo "Built from: ${CURRENT_GIT_REV}"
+
+# Try to fetch the latest commit hash from upstream
+if LATEST_GIT_REV="$(git -C /workspace/llama.cpp ls-remote origin HEAD | awk '{print $1}' 2>/dev/null)" && [[ -n "${LATEST_GIT_REV}" ]]; then
+    if [[ "${CURRENT_GIT_REV}" == "${LATEST_GIT_REV}" ]]; then
+        echo "Status: Up-to-date with upstream (${CURRENT_GIT_REV:0:7})"
+    else
+        echo "Status: Not the latest version"
+        echo "Latest:  ${LATEST_GIT_REV:0:7}"
+        echo "Built:   ${CURRENT_GIT_REV:0:7}"
+        echo "To update, rebuild with the latest code"
+    fi
+else
+    echo "Status: Could not fetch upstream version info"
+    echo "Built from: ${CURRENT_GIT_REV:0:7}"
+fi
+echo ""
 
 echo "Export completed to: ${EXPORT_DIR}"
 ls -lh "${EXPORT_DIR}" | sed -n '1,120p'
