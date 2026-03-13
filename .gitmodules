@@ -1,3 +1,9 @@
 [submodule "reference/llama.cpp"]
 	path = reference/llama.cpp
 	url = https://github.com/BegoniaHe/llama.cpp.git
+[submodule "reference/strix-halo-testing"]
+	path = reference/strix-halo-testing
+	url = https://github.com/lhl/strix-halo-testing
+[submodule "reference/hip"]
+	path = reference/hip
+	url = https://github.com/ROCm/hip
