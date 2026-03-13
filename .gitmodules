@@ -7,3 +7,6 @@
 [submodule "reference/hip"]
 	path = reference/hip
 	url = https://github.com/ROCm/hip
+[submodule "reference/ROCm"]
+	path = reference/ROCm
+	url = https://github.com/ROCm/ROCm
