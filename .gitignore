@@ -1,4 +1,4 @@
 # gguf models
 *.gguf
 
-target/
+target*/

@@ -22,6 +22,7 @@ RUN cmake -S . -B build \
       -DAMDGPU_TARGETS=gfx1151 \
         -DCMAKE_HIP_COMPILER_ROCM_ROOT=/opt/rocm \
         -DCMAKE_HIP_FLAGS="--rocm-path=/opt/rocm" \
+      -DGGML_HIP_ROCWMMA_FATTN=ON \
       -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_EXE_LINKER_FLAGS="-no-pie -Wl,--gc-sections -flto" \
