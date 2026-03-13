@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace
 
-ARG LLAMA_CPP_REPO=https://github.com/ggml-org/llama.cpp.git
+ARG LLAMA_CPP_REPO=https://github.com/BegoniaHe/llama.cpp.git
 ARG LLAMA_CPP_REF=master
 RUN git clone ${LLAMA_CPP_REPO} --depth 1 --branch ${LLAMA_CPP_REF} /workspace/llama.cpp
 WORKDIR /workspace/llama.cpp
