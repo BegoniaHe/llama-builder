@@ -10,3 +10,6 @@
 [submodule "reference/ROCm"]
 	path = reference/ROCm
 	url = https://github.com/ROCm/ROCm
+[submodule "reference/rocm-libraries"]
+	path = reference/rocm-libraries
+	url = https://github.com/ROCm/rocm-libraries
