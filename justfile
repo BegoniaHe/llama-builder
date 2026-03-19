@@ -24,81 +24,109 @@ help:
 # Build Docker image
 [doc("Build Docker image for llama-gfx1151")]
 build:
-    @echo "🏗️  Building Docker image: {{DOCKER_TAG}}"
-    @"{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}"
+    #!/bin/bash
+    echo "Building Docker image: {{DOCKER_TAG}}"
+    "{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}"
 
 # Build without cache
 [doc("Build Docker image without cache")]
 build-nocache:
-    @echo "🏗️  Building Docker image (no-cache): {{DOCKER_TAG}}"
-    @"{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}" --no-cache
+    #!/bin/bash
+    echo "Building Docker image (no-cache): {{DOCKER_TAG}}"
+    "{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}" --no-cache
 
 # Export binaries
 [doc("Export compiled binaries from Docker")]
 export:
-    @echo "📦 Exporting binaries to {{LLAMA_EXPORT_DIR}}"
-    @mkdir -p "{{LLAMA_EXPORT_DIR}}"
-    @"{{SCRIPTS_DIR}}/export-binary.sh" --image "{{DOCKER_TAG}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Exporting binaries to {{LLAMA_EXPORT_DIR}}"
+    mkdir -p "{{LLAMA_EXPORT_DIR}}"
+    "{{SCRIPTS_DIR}}/export-binary.sh" --image "{{DOCKER_TAG}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Run llama-server
 [doc("Start llama-server with optimal settings")]
 run: check-binary
-    @echo "🚀 Starting llama-server..."
-    @"{{SCRIPTS_DIR}}/run-server.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Starting llama-server..."
+    "{{SCRIPTS_DIR}}/run-server.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Run CLI
 [doc("Start llama-cli interactive mode")]
 run-cli: check-binary
-    @echo "💬 Starting llama-cli..."
-    @"{{SCRIPTS_DIR}}/run-cli.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Starting llama-cli..."
+    "{{SCRIPTS_DIR}}/run-cli.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Run benchmarks
 [doc("Run performance benchmarks")]
 bench: check-binary
-    @echo "📊 Running benchmarks..."
-    @"{{SCRIPTS_DIR}}/benchmark.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{BENCH_MODEL}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Running benchmarks..."
+    "{{SCRIPTS_DIR}}/benchmark.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{BENCH_MODEL}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Profile with rocprofv3
 [doc("Profile with rocprofv3")]
 profile: check-binary
-    @echo "🔍 Profiling with rocprofv3..."
-    @"{{SCRIPTS_DIR}}/profile.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Profiling with rocprofv3..."
+    "{{SCRIPTS_DIR}}/profile.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Check build status
 [doc("Check build status and version")]
 check-build:
-    @if [[ -f "{{LLAMA_EXPORT_DIR}}/llama-git-rev.txt" ]]; then echo "✅ Build found at {{LLAMA_EXPORT_DIR}}"; echo "Git revision: $(cat '{{LLAMA_EXPORT_DIR}}/llama-git-rev.txt' | cut -c1-7)"; echo "Binaries:"; ls -lh "{{LLAMA_EXPORT_DIR}}/bin" 2>/dev/null | tail -n +2 | awk '{print "  " $$9 " (" $$5 ")"}'; else echo "❌ No build found. Run 'just build && just export' first."; fi
+    #!/bin/bash
+    if [[ -f "{{LLAMA_EXPORT_DIR}}/llama-git-rev.txt" ]]; then
+        echo "Build found at {{LLAMA_EXPORT_DIR}}"
+        echo "Git revision: $(cat '{{LLAMA_EXPORT_DIR}}/llama-git-rev.txt' | cut -c1-7)"
+        echo "Binaries:"
+        ls -lh "{{LLAMA_EXPORT_DIR}}/bin" 2>/dev/null | tail -n +2 | awk '{print "  " $9 " (" $5 ")"}'
+    else
+        echo "No build found. Run 'just build && just export' first."
+    fi
 
 # Run tests
 [doc("Run basic tests")]
 test: check-binary
-    @echo "🧪 Running tests..."
-    @"{{SCRIPTS_DIR}}/test.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Running tests..."
+    "{{SCRIPTS_DIR}}/test.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Clean build artifacts
 [doc("Clean build artifacts")]
 clean:
-    @echo "🧹 Cleaning build artifacts..."
-    @rm -rf "{{LLAMA_EXPORT_DIR}}"
-    @echo "✅ Cleaned {{LLAMA_EXPORT_DIR}}"
+    #!/bin/bash
+    echo "Cleaning build artifacts..."
+    rm -rf "{{LLAMA_EXPORT_DIR}}"
+    echo "Cleaned {{LLAMA_EXPORT_DIR}}"
 
 # Clean everything
 [doc("Clean all including Docker images")]
 clean-all: clean
-    @echo "🧹 Removing Docker images..."
-    @if podman image inspect "{{DOCKER_TAG}}" &>/dev/null; then podman rmi -f "{{DOCKER_TAG}}" && echo "✅ Removed {{DOCKER_TAG}}"; else echo "ℹ️  {{DOCKER_TAG}} not found"; fi
+    #!/bin/bash
+    echo "Removing Docker images..."
+    if podman image inspect "{{DOCKER_TAG}}" &>/dev/null; then
+        podman rmi -f "{{DOCKER_TAG}}" && echo "Removed {{DOCKER_TAG}}"
+    else
+        echo "{{DOCKER_TAG}} not found"
+    fi
 
 # Check if binary exists
 [private]
 check-binary:
-    @if [[ ! -f "{{LLAMA_EXPORT_DIR}}/bin/llama-server" ]] && [[ ! -f "{{LLAMA_EXPORT_DIR}}/bin/llama-cli" ]]; then echo "❌ Binary not found. Run 'just build && just export' first."; exit 1; fi
+    #!/bin/bash
+    if [[ ! -f "{{LLAMA_EXPORT_DIR}}/bin/llama-server" ]] && [[ ! -f "{{LLAMA_EXPORT_DIR}}/bin/llama-cli" ]]; then
+        echo "Binary not found. Run 'just build && just export' first."
+        exit 1
+    fi
 
 # Full build pipeline
 [doc("Full build pipeline: docker build → export")]
 all: build export check-build
-    @echo "✅ Build pipeline completed!"
+    #!/bin/bash
+    echo "Build pipeline completed!"
 
 # Rebuild everything from scratch
 [doc("Clean and rebuild everything")]
 rebuild: clean-all all
-    @echo "✅ Rebuild completed!"
+    #!/bin/bash
+    echo "Rebuild completed!"

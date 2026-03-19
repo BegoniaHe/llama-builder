@@ -39,5 +39,5 @@ else
         "$IMAGE" /export
 fi
 
-echo "✅ Export completed successfully"
+echo "Export completed successfully"
 echo "Binaries location: $EXPORT_DIR"

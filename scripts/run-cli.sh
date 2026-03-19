@@ -60,7 +60,7 @@ export LD_LIBRARY_PATH="${EXPORT_DIR}/lib:${LD_LIBRARY_PATH:-}"
 export ROCBLAS_USE_HIPBLASLT=1
 export HSA_OVERRIDE_GFX_VERSION=11.0.0
 
-echo "💬 Starting llama-cli"
+echo "Starting llama-cli"
 echo "  Model: $MODEL_PATH"
 echo "  GPU layers: 999"
 echo "  Threads: $THREADS"
