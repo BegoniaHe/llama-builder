@@ -39,6 +39,7 @@ just all
 |------|------|
 | `just build` | 构建 Docker 镜像 |
 | `just build-nocache` | 不使用缓存构建 |
+| `just build-pgo-generate` | 构建用于收集 PGO profile 的采样镜像 |
 | `just export` | 导出编译的二进制文件 |
 | `just check-build` | 检查构建状态 |
 | `just all` | 完整构建流程 |
@@ -74,6 +75,9 @@ just all
 # 指定 llama.cpp 分支/标签
 LLAMA_CPP_REF=mybranch just build
 
+# 构建 PGO 采样镜像
+just build-pgo-generate
+
 # 指定导出目录
 LLAMA_EXPORT_DIR=/custom/path just export
 
@@ -91,6 +95,7 @@ just bench -- --seq-lens 2048,4096,8192
 ```
 scripts/
 ├── build-docker.sh      # Docker 镜像构建脚本
+├── merge-pgo-profile.sh # 合并 .profraw 为 .profdata
 ├── export-binary.sh     # 二进制导出脚本
 ├── run-server.sh        # llama-server 启动脚本
 ├── run-cli.sh          # llama-cli 启动脚本
@@ -118,6 +123,28 @@ scripts/
 
 # 通过 justfile 使用（参数自动处理）
 just run
+```
+
+## PGO profile 收集
+
+如果你要做基于真实 workload 的 PGO，可以先构建采样镜像：
+
+```bash
+just build-pgo-generate
+IMAGE_NAME=llama-gfx1151-pgo-generate ./export.sh ./target
+```
+
+然后运行导出的二进制，并把 profile 输出到一个目录：
+
+```bash
+mkdir -p ./pgo-data
+LLVM_PROFILE_FILE="$PWD/pgo-data/llama-%m.profraw" ./run.sh
+```
+
+采集完成后合并：
+
+```bash
+./scripts/merge-pgo-profile.sh ./pgo-data ./pgo-data/merged.profdata llama-gfx1151:latest-pgo-generate
 ```
 
 ## 高级用法

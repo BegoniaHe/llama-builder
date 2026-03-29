@@ -14,24 +14,46 @@ WORKDIR /workspace
 
 ARG LLAMA_CPP_REPO=https://github.com/BegoniaHe/llama.cpp.git
 ARG LLAMA_CPP_REF=master
+ARG PGO_STAGE=none
 RUN git clone ${LLAMA_CPP_REPO} --depth 1 --branch ${LLAMA_CPP_REF} /workspace/llama.cpp
 WORKDIR /workspace/llama.cpp
 
-RUN cmake -S . -B build \
+RUN HIPCXX="$(hipconfig -l)/clang" \
+ && case "$PGO_STAGE" in \
+        none) \
+            PGO_C_FLAGS=""; \
+            PGO_CXX_FLAGS=""; \
+            PGO_EXE_LINKER_FLAGS=""; \
+            ;; \
+        generate) \
+            PGO_C_FLAGS="-fprofile-instr-generate"; \
+            PGO_CXX_FLAGS="-fprofile-instr-generate"; \
+            PGO_EXE_LINKER_FLAGS="-fprofile-instr-generate"; \
+            ;; \
+        *) \
+            echo "Unsupported PGO_STAGE: $PGO_STAGE" >&2; \
+            exit 1; \
+            ;; \
+    esac \
+ && cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_HIP_COMPILER="$HIPCXX" \
+      -DHIP_PLATFORM=amd \
       -DGGML_HIP=ON \
       -DAMDGPU_TARGETS=gfx1151 \
-        -DCMAKE_HIP_COMPILER_ROCM_ROOT=/opt/rocm \
-        -DCMAKE_HIP_FLAGS="--rocm-path=/opt/rocm" \
       -DGGML_HIP_ROCWMMA_FATTN=ON \
-      -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_EXE_LINKER_FLAGS="-no-pie -Wl,--gc-sections -flto" \
-            -DLLAMA_BUILD_TESTS=OFF \
-            -DLLAMA_BUILD_EXAMPLES=OFF \
-            -DLLAMA_BUILD_SERVER=ON \
-    -DCMAKE_C_FLAGS="-O3 -ffunction-sections -fdata-sections -flto" \
-    -DCMAKE_CXX_FLAGS="-O3 -ffunction-sections -fdata-sections -flto" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--gc-sections" \
+      -DGGML_NATIVE=ON \
+      -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+      -DCMAKE_HIP_FLAGS="-mllvm --amdgpu-unroll-threshold-local=600" \
+      -DBUILD_SHARED_LIBS=OFF \
+      -DLLAMA_BUILD_TESTS=OFF \
+    -DLLAMA_BUILD_EXAMPLES=ON \
+    -DLLAMA_BUILD_TOOLS=ON \
+      -DLLAMA_BUILD_SERVER=ON \
+      -DCMAKE_C_FLAGS="-O3 -ffunction-sections -fdata-sections ${PGO_C_FLAGS}" \
+      -DCMAKE_CXX_FLAGS="-O3 -ffunction-sections -fdata-sections ${PGO_CXX_FLAGS}" \
+      -DCMAKE_EXE_LINKER_FLAGS="-no-pie -Wl,--gc-sections ${PGO_EXE_LINKER_FLAGS}" \
+      -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--gc-sections" \
  && cmake --build build --config Release -j"$(nproc)"
 
 RUN cat >/usr/local/bin/export-llama-gfx1151 <<'EOF'
@@ -108,12 +130,19 @@ echo "Export completed to: ${EXPORT_DIR}"
 ls -lh "${EXPORT_DIR}" | sed -n '1,120p'
 echo "---"
 ls -lh "${EXPORT_DIR}/bin" | sed -n '1,200p'
+
+if [[ "${PGO_STAGE:-none}" == "generate" ]]; then
+    echo "---"
+    echo "PGO collection build exported."
+    echo "Run binaries with LLVM_PROFILE_FILE pointing to a writable .profraw path."
+fi
 EOF
 
 RUN chmod +x /usr/local/bin/export-llama-gfx1151
 
 ENV HSA_OVERRIDE_GFX_VERSION=11.0.0 \
-    ROCBLAS_USE_HIPBLASLT=1
+    ROCBLAS_USE_HIPBLASLT=1 \
+    PGO_STAGE=${PGO_STAGE}
 
 ENTRYPOINT ["/usr/local/bin/export-llama-gfx1151"]
 CMD ["/export"]

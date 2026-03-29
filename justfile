@@ -35,6 +35,13 @@ build-nocache:
     echo "Building Docker image (no-cache): {{DOCKER_TAG}}"
     "{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}" --no-cache
 
+# Build PGO instrumentation image
+[doc("Build a PGO instrumentation image for profile collection")]
+build-pgo-generate:
+    #!/bin/bash
+    echo "Building PGO instrumentation image: {{DOCKER_TAG}}-pgo-generate"
+    "{{SCRIPTS_DIR}}/build-docker.sh" --image "{{DOCKER_TAG}}-pgo-generate" --ref "{{LLAMA_CPP_REF}}" --context "{{PROJECT_ROOT}}" --pgo-stage generate
+
 # Export binaries
 [doc("Export compiled binaries from Docker")]
 export:
