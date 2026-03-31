@@ -138,7 +138,8 @@ IMAGE_NAME=llama-gfx1151-pgo-generate ./export.sh ./target
 
 ```bash
 mkdir -p ./pgo-data
-LLVM_PROFILE_FILE="$PWD/pgo-data/llama-%m.profraw" ./run.sh
+LLVM_PROFILE_FILE="$PWD/pgo-data/llama-%m.profraw" \
+    ./scripts/run-server.sh --binary-dir ./target/bin --model ./models/Qwen3.5-35B-A3B-UD-Q4_K_L.gguf --export-dir ./target
 ```
 
 采集完成后合并：

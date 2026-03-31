@@ -1,0 +1,140 @@
+name: Daily Prerelease
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      llama_cpp_ref:
+        description: llama.cpp git ref to build
+        required: false
+        default: master
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-prerelease
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: nightly
+  IMAGE_NAME: llama-gfx1151-nightly
+  EXPORT_DIR: target
+
+jobs:
+  build-and-release:
+    runs-on:
+      - self-hosted
+      - linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Delete existing prereleases
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prereleases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            for (const release of prereleases.filter((item) => item.prerelease)) {
+              core.info(`Deleting prerelease ${release.tag_name} (#${release.id})`);
+              await github.rest.repos.deleteRelease({
+                owner,
+                repo,
+                release_id: release.id,
+              });
+
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `tags/${release.tag_name}`,
+                });
+                core.info(`Deleted tag ${release.tag_name}`);
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`Tag ${release.tag_name} already absent`);
+                } else {
+                  throw error;
+                }
+              }
+            }
+
+      - name: Prepare release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_date="$(date -u +'%Y-%m-%d')"
+          asset_name="llama-gfx1151-${build_date}.tar.gz"
+          {
+            echo "build_date=${build_date}"
+            echo "asset_name=${asset_name}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve llama.cpp ref
+        id: ref
+        shell: bash
+        env:
+          INPUT_REF: ${{ github.event.inputs.llama_cpp_ref }}
+        run: |
+          set -euo pipefail
+          ref="${INPUT_REF:-master}"
+          echo "value=${ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Build container image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/build-docker.sh \
+            --image "$IMAGE_NAME" \
+            --ref "${{ steps.ref.outputs.value }}" \
+            --context "$GITHUB_WORKSPACE"
+
+      - name: Export binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/export-binary.sh \
+            --image "$IMAGE_NAME" \
+            --export-dir "$EXPORT_DIR"
+
+      - name: Archive release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -C "$EXPORT_DIR" -czf "${{ steps.meta.outputs.asset_name }}" .
+
+      - name: Capture upstream revision
+        id: revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          revision="unknown"
+          if [[ -f "$EXPORT_DIR/llama-git-rev.txt" ]]; then
+            revision="$(tr -d '\n' < "$EXPORT_DIR/llama-git-rev.txt")"
+          fi
+          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Nightly prerelease ${{ steps.meta.outputs.build_date }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            Automated daily prerelease build.
+
+            llama.cpp ref: `${{ steps.ref.outputs.value }}`
+            exported revision: `${{ steps.revision.outputs.revision }}`
+          files: |
+            ${{ steps.meta.outputs.asset_name }}

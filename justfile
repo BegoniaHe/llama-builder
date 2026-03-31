@@ -14,7 +14,7 @@ LLAMA_CPP_REF := env_var_or_default("LLAMA_CPP_REF", "master")
 LLAMA_EXPORT_DIR := env_var_or_default("LLAMA_EXPORT_DIR", PROJECT_ROOT / "target")
 
 # Model paths
-MODEL_PATH := PROJECT_ROOT / "models" / "Qwen3.5-35B-A3B-Q4_K_M.gguf"
+MODEL_PATH := PROJECT_ROOT / "models" / "Qwen3.5-35B-A3B-UD-Q4_K_L.gguf"
 BENCH_MODEL := env_var_or_default("BENCH_MODEL", MODEL_PATH)
 
 # Help command
@@ -56,6 +56,14 @@ run: check-binary
     #!/bin/bash
     echo "Starting llama-server..."
     "{{SCRIPTS_DIR}}/run-server.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+
+# Run llama-server with a CPU-oriented fallback that avoids the current ROCm op-offload crash.
+[doc("Start llama-server with CPU fallback to avoid current ROCm segfault")]
+run-safe: check-binary
+    #!/bin/bash
+    echo "Starting llama-server in safe mode..."
+    GPU_LAYERS=0 OP_OFFLOAD=off FLASH_ATTN=off CTX_SIZE=512 WARMUP=off REASONING=off \
+        "{{SCRIPTS_DIR}}/run-server.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Run CLI
 [doc("Start llama-cli interactive mode")]

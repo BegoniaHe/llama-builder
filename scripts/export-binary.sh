@@ -29,10 +29,14 @@ echo "Export directory: $EXPORT_DIR"
 
 mkdir -p "$EXPORT_DIR"
 
-# Use docker-compose for consistency, fallback to podman
-if [[ -f "docker-compose.yaml" ]]; then
-    LLAMA_EXPORT_DIR="$EXPORT_DIR" podman-compose run --rm llama-gfx1151 /export
+# Prefer compose when a provider is available, otherwise fall back to podman run.
+if [[ -f "docker-compose.yaml" ]] && podman compose version >/dev/null 2>&1; then
+    LLAMA_EXPORT_DIR="$EXPORT_DIR" podman compose run --rm llama-gfx1151 /export
 else
+    if [[ -f "docker-compose.yaml" ]]; then
+        echo "Compose provider unavailable, falling back to podman run"
+    fi
+
     podman run --rm \
         -v "$EXPORT_DIR:/export:Z" \
         -e LLAMA_EXPORT_DIR=/export \
