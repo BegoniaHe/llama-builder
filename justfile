@@ -14,7 +14,9 @@ LLAMA_CPP_REF := env_var_or_default("LLAMA_CPP_REF", "master")
 LLAMA_EXPORT_DIR := env_var_or_default("LLAMA_EXPORT_DIR", PROJECT_ROOT / "target")
 
 # Model paths
-MODEL_PATH := PROJECT_ROOT / "models" / "Qwen3.5-35B-A3B-UD-Q4_K_L.gguf"
+QWEN3_5_MODEL_PATH := PROJECT_ROOT / "models" / "Qwen3.5-35B-A3B-UD-Q4_K_L.gguf"
+GEMMA4_MODEL_PATH := PROJECT_ROOT / "models" / "gemma-4-26B-A4B-it-UD-Q5_K_S.gguf"
+MODEL_PATH := QWEN3_5_MODEL_PATH
 BENCH_MODEL := env_var_or_default("BENCH_MODEL", MODEL_PATH)
 
 # Help command
@@ -51,11 +53,23 @@ export:
     "{{SCRIPTS_DIR}}/export-binary.sh" --image "{{DOCKER_TAG}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
 
 # Run llama-server
-[doc("Start llama-server with optimal settings")]
-run: check-binary
+[doc("Start llama-server with model profile: just run qwen3_5 | just run gemma4")]
+run model="qwen3_5": check-binary
     #!/bin/bash
-    echo "Starting llama-server..."
-    "{{SCRIPTS_DIR}}/run-server.sh" --binary-dir "{{LLAMA_EXPORT_DIR}}/bin" --model "{{MODEL_PATH}}" --export-dir "{{LLAMA_EXPORT_DIR}}"
+    case "{{model}}" in
+        qwen3_5)
+            echo "Starting llama-server for qwen3_5..."
+            exec "{{PROJECT_ROOT}}/run-qwen3_5.sh"
+            ;;
+        gemma4)
+            echo "Starting llama-server for gemma4..."
+            exec "{{PROJECT_ROOT}}/run-gemma4.sh"
+            ;;
+        *)
+            echo "Unknown model '{{model}}'. Expected one of: qwen3_5, gemma4" >&2
+            exit 1
+            ;;
+    esac
 
 # Run llama-server with a CPU-oriented fallback that avoids the current ROCm op-offload crash.
 [doc("Start llama-server with CPU fallback to avoid current ROCm segfault")]

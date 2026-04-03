@@ -17,6 +17,13 @@ REASONING="${REASONING:-off}"
 OP_OFFLOAD="${OP_OFFLOAD:-on}"
 GFX_OVERRIDE="${GFX_OVERRIDE:-}"
 TASK_PROFILE="${TASK_PROFILE:-general}"
+ENABLE_THINKING="${ENABLE_THINKING:-false}"
+TEMP_OVERRIDE="${TEMP_OVERRIDE:-}"
+TOP_P_OVERRIDE="${TOP_P_OVERRIDE:-}"
+TOP_K_OVERRIDE="${TOP_K_OVERRIDE:-}"
+MIN_P_OVERRIDE="${MIN_P_OVERRIDE:-}"
+PRESENCE_PENALTY_OVERRIDE="${PRESENCE_PENALTY_OVERRIDE:-}"
+REPEAT_PENALTY_OVERRIDE="${REPEAT_PENALTY_OVERRIDE:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -114,6 +121,30 @@ case "$TASK_PROFILE" in
         ;;
 esac
 
+if [[ -n "$TEMP_OVERRIDE" ]]; then
+    TEMP="$TEMP_OVERRIDE"
+fi
+
+if [[ -n "$TOP_P_OVERRIDE" ]]; then
+    TOP_P="$TOP_P_OVERRIDE"
+fi
+
+if [[ -n "$TOP_K_OVERRIDE" ]]; then
+    TOP_K="$TOP_K_OVERRIDE"
+fi
+
+if [[ -n "$MIN_P_OVERRIDE" ]]; then
+    MIN_P="$MIN_P_OVERRIDE"
+fi
+
+if [[ -n "$PRESENCE_PENALTY_OVERRIDE" ]]; then
+    PRESENCE_PENALTY="$PRESENCE_PENALTY_OVERRIDE"
+fi
+
+if [[ -n "$REPEAT_PENALTY_OVERRIDE" ]]; then
+    REPEAT_PENALTY="$REPEAT_PENALTY_OVERRIDE"
+fi
+
 # Setup environment
 export LD_LIBRARY_PATH="${EXPORT_DIR}/lib:${LD_LIBRARY_PATH:-}"
 export ROCBLAS_USE_HIPBLASLT=1
@@ -130,8 +161,15 @@ echo "  Context: $CTX_SIZE"
 echo "  Flash attention: $FLASH_ATTN"
 echo "  Warmup: $WARMUP"
 echo "  Reasoning: $REASONING"
+echo "  Thinking: $ENABLE_THINKING"
 echo "  Op offload: $OP_OFFLOAD"
 echo "  Task profile: $TASK_PROFILE"
+echo "  Temperature: $TEMP"
+echo "  Top-p: $TOP_P"
+echo "  Top-k: $TOP_K"
+echo "  Min-p: $MIN_P"
+echo "  Presence penalty: $PRESENCE_PENALTY"
+echo "  Repeat penalty: $REPEAT_PENALTY"
 if [[ -n "$GFX_OVERRIDE" ]]; then
     echo "  GFX override: $GFX_OVERRIDE"
 fi
@@ -149,7 +187,7 @@ ARGS=(
     --repeat-penalty "$REPEAT_PENALTY"
     --repeat-last-n 256
     --flash-attn "$FLASH_ATTN"
-    --chat-template-kwargs '{"enable_thinking": false}'
+    --chat-template-kwargs "{\"enable_thinking\": ${ENABLE_THINKING}}"
     --host "$HOST"
     --port "$PORT"
 )

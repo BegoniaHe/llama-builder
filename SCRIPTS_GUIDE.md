@@ -36,7 +36,7 @@ just all
 ### 构建相关
 
 | 命令 | 说明 |
-|------|------|
+| ---- | ---- |
 | `just build` | 构建 Docker 镜像 |
 | `just build-nocache` | 不使用缓存构建 |
 | `just build-pgo-generate` | 构建用于收集 PGO profile 的采样镜像 |
@@ -48,14 +48,15 @@ just all
 ### 运行相关
 
 | 命令 | 说明 |
-|------|------|
-| `just run` | 启动 llama-server |
+| ---- | ---- |
+| `just run qwen3_5` | 启动 Qwen 3.5 的 llama-server |
+| `just run gemma4` | 启动 Gemma 4 的 llama-server |
 | `just run-cli` | 启动交互式 llama-cli |
 
 ### 性能测试
 
 | 命令 | 说明 |
-|------|------|
+| ---- | ---- |
 | `just bench` | 运行性能基准测试 |
 | `just profile` | 使用 rocprofv3 进行性能分析 |
 | `just test` | 运行基本测试套件 |
@@ -63,7 +64,7 @@ just all
 ### 清理
 
 | 命令 | 说明 |
-|------|------|
+| ---- | ---- |
 | `just clean` | 清理构建产物 |
 | `just clean-all` | 清理构建产物和 Docker 镜像 |
 
@@ -92,7 +93,7 @@ just bench -- --seq-lens 2048,4096,8192
 
 ### 脚本目录结构
 
-```
+```text
 scripts/
 ├── build-docker.sh      # Docker 镜像构建脚本
 ├── merge-pgo-profile.sh # 合并 .profraw 为 .profdata
@@ -102,6 +103,13 @@ scripts/
 ├── benchmark.sh        # 性能基准测试脚本
 ├── profile.sh          # rocprofv3 性能分析脚本
 └── test.sh             # 基本测试脚本
+```
+
+根目录模型启动包装器：
+
+```text
+run-qwen3_5.sh          # Qwen 3.5 服务启动入口
+run-gemma4.sh           # Gemma 4 服务启动入口
 ```
 
 ### 脚本特点
@@ -121,8 +129,13 @@ scripts/
     --export-dir ./target \
     --port 8000
 
-# 通过 justfile 使用（参数自动处理）
-just run
+# 通过 justfile 使用预设模型
+just run qwen3_5
+just run gemma4
+
+# 直接使用根目录包装脚本
+./run-qwen3_5.sh
+./run-gemma4.sh
 ```
 
 ## PGO profile 收集
@@ -150,13 +163,11 @@ LLVM_PROFILE_FILE="$PWD/pgo-data/llama-%m.profraw" \
 
 ## 高级用法
 
-### 自定义模型路径
+### 选择预设模型
 
-编辑 `justfile` 中的 `MODEL_PATH` 变量：
+`just run qwen3_5` 使用 Qwen 3.5 预设。
 
-```makefile
-MODEL_PATH := PROJECT_ROOT / "models" / "your-model.gguf"
-```
+`just run gemma4` 使用 Gemma 4 预设。
 
 ### 自定义服务器参数
 
